@@ -2,48 +2,33 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const { Server } = require('socket.io');
 const connectDB = require('./db');
-const groupRoutes = require('./routes/groupRoutes');
 
-// 📌 Connexion MongoDB
-connectDB();
+const authRoutes = require('./routes/authRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes API
+connectDB();
+
+app.get('/', (_, res) => res.send('API OK'));
+app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/messages', messageRoutes);
 
-//  Création serveur HTTP + WebSocket
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+require('./socket')(server);
 
-//  Gestion Socket.IO
-io.on('connection', (socket) => {
-    console.log('🟢 Utilisateur connecté :', socket.id);
-
-    // Recevoir un message
-    socket.on('sendMessage', (data) => {
-        io.to(data.room).emit('receiveMessage', data);
-    });
-
-    // Rejoindre un groupe
-    socket.on('joinRoom', (room) => {
-        socket.join(room);
-        console.log(` ${socket.id} a rejoint la salle ${room}`);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('🔴 Utilisateur déconnecté :', socket.id);
-    });
-});
+// Init FCM admin (option)
+if (process.env.FIREBASE_ADMIN_CREDENTIALS_PATH) {
+  const admin = require('firebase-admin');
+  admin.initializeApp({
+    credential: admin.credential.cert(require(process.env.FIREBASE_ADMIN_CREDENTIALS_PATH))
+  });
+}
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(` Serveur démarré sur le port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 API+WS sur ${PORT}`));

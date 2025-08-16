@@ -1,8 +1,10 @@
-const express = require('express');
-const { createGroup, getGroups } = require('../controllers/groupController');
-const router = express.Router();
+const router = require('express').Router();
+const auth = require('../middleware/auth');
+const { createGroup, myGroups, addMember } = require('../controllers/groupController');
 
+router.use(auth);
 router.post('/', createGroup);
-router.get('/', getGroups);
+router.get('/mine', myGroups);
+router.post('/:groupId/members', addMember);
 
 module.exports = router;
